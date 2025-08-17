@@ -2,9 +2,6 @@ import argparse
 import os
 import numpy as np
 from network import NeuralNetwork
-import kagglehub
-import gzip
-import pickle
 import struct
 import tkinter as tk
 from PIL import Image, ImageOps

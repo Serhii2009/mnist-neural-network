@@ -22,7 +22,7 @@ A from-scratch implementation of a fully-connected neural network for handwritte
 | Parameter     | Value | Rationale                                                                              |
 | ------------- | ----- | -------------------------------------------------------------------------------------- |
 | Batch Size    | 32    | Small batches for stable gradients with limited memory                                 |
-| Epochs        | 80    | Sufficient for convergence on MNIST                                                    |
+| Epochs        | 30    | Sufficient for convergence on MNIST                                                    |
 | Learning Rate | 0.25  | Works well with sigmoid activations; smaller slows convergence, larger may be unstable |
 
 ## 📁 Repository Structure
@@ -88,22 +88,6 @@ The GUI provides a 28×28 pixel grid drawing canvas that mirrors the MNIST input
 - **Accuracy**: Model confidence percentage
 - **Loss**: Mean squared error for current input
 - **Clear Function**: Reset canvas for new digit
-
-### Interface Layout:
-
-```
-┌─────────────────────────────────────────┐
-│ [0] [1] [2] [3] [4] [5] [6] [7] [8] [9] │ ← Digit indicators
-├─────────────────┬───────────────────────┤
-│                 │ Prediction: 7         │
-│   28×28 Grid    │                       │
-│   Drawing       │ Accuracy: 94.2%       │
-│   Canvas        │                       │
-│                 │ Loss: 0.0156          │
-├─────────────────┴───────────────────────┤
-│            [Clear Button]               │
-└─────────────────────────────────────────┘
-```
 
 ## 🔬 Technical Implementation
 

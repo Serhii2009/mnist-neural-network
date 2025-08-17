@@ -1,66 +1,46 @@
-# network.py
 import numpy as np
 import random
-from typing import List, Tuple
 
 
 def sigmoid(z):
-    """The sigmoid function."""
-    return 1.0 / (1.0 + np.exp(-z))
+    return 1.0 / (1.0 + np.exp(-np.clip(z, -250, 250)))
 
 
 def sigmoid_prime(z):
-    """Derivative of the sigmoid function."""
     return sigmoid(z) * (1 - sigmoid(z))
 
 
 class NeuralNetwork:
-    def __init__(self, sizes: List[int]):
-        """
-        sizes: list of layer sizes, e.g. [784, 16, 16, 10]
-        """
+    def __init__(self, sizes):
         self.sizes = sizes
         self.num_layers = len(sizes)
-
-        # Random initialization of weights and biases
         self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
         self.weights = [np.random.randn(y, x) / np.sqrt(x)
                         for x, y in zip(sizes[:-1], sizes[1:])]
 
-    # -----------------------------
-    # Core Methods
-    # -----------------------------
-
-    def feedforward(self, a: np.ndarray) -> np.ndarray:
-        """Return the output of the network given input a."""
+    def feedforward(self, a):
         for b, w in zip(self.biases, self.weights):
             a = sigmoid(np.dot(w, a) + b)
         return a
 
-    def backprop(self, x: np.ndarray, y: np.ndarray) -> Tuple[List[np.ndarray], List[np.ndarray]]:
-        """
-        Return nabla_b, nabla_w representing the gradient for the cost function.
-        """
+    def backprop(self, x, y):
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
 
-        # Forward pass
         activation = x
-        activations = [x]  # store activations layer by layer
-        zs = []  # store z vectors layer by layer
+        activations = [x]
+        zs = []
+        
         for b, w in zip(self.biases, self.weights):
             z = np.dot(w, activation) + b
             zs.append(z)
             activation = sigmoid(z)
             activations.append(activation)
 
-        # Backward pass
-        # Output layer error (MSE derivative)
         delta = (activations[-1] - y) * sigmoid_prime(zs[-1])
         nabla_b[-1] = delta
         nabla_w[-1] = np.dot(delta, activations[-2].T)
 
-        # Backpropagate through previous layers
         for l in range(2, self.num_layers):
             z = zs[-l]
             sp = sigmoid_prime(z)
@@ -70,22 +50,21 @@ class NeuralNetwork:
 
         return nabla_b, nabla_w
 
-    def update_mini_batch(self, mini_batch, eta: float):
-        """Update weights and biases using gradient descent on a mini batch."""
+    def update_mini_batch(self, mini_batch, eta):
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
+        
         for x, y in mini_batch:
             delta_nabla_b, delta_nabla_w = self.backprop(x, y)
             nabla_b = [nb + dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
             nabla_w = [nw + dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+            
         self.weights = [w - (eta / len(mini_batch)) * nw
                         for w, nw in zip(self.weights, nabla_w)]
         self.biases = [b - (eta / len(mini_batch)) * nb
                        for b, nb in zip(self.biases, nabla_b)]
 
-    def train(self, training_data, epochs: int, mini_batch_size: int, eta: float,
-              test_data=None, track_cost=False):
-        """Train the neural network with SGD."""
+    def train(self, training_data, epochs, mini_batch_size, eta, test_data=None, track_cost=False):
         training_data = list(training_data)
         n = len(training_data)
         test_data = list(test_data) if test_data else None
@@ -99,7 +78,6 @@ class NeuralNetwork:
             for mini_batch in mini_batches:
                 self.update_mini_batch(mini_batch, eta)
 
-            # Track cost and accuracy
             if track_cost:
                 cost = self.total_cost(training_data)
                 train_acc = self.evaluate(training_data)
@@ -107,7 +85,7 @@ class NeuralNetwork:
                 history["cost"].append(cost)
                 history["train_acc"].append(train_acc)
                 history["test_acc"].append(test_acc)
-                print(f"Epoch {epoch:02d}/{epochs} | Cost ~ {cost:.4f} "
+                print(f"Epoch {epoch:02d}/{epochs} | Cost: {cost:.4f} "
                       f"| Train Acc: {train_acc:.2f}% "
                       f"| Test Acc: {test_acc:.2f}%" if test_data else "")
             else:
@@ -115,39 +93,42 @@ class NeuralNetwork:
 
         return history
 
-    def evaluate(self, data) -> float:
-        """Return accuracy percentage on given data."""
+    def evaluate(self, data):
         if not data:
             return 0.0
-        results = [(np.argmax(self.feedforward(x)), np.argmax(y)) for (x, y) in data]
+        results = [(np.argmax(self.feedforward(x)), 
+                   np.argmax(y) if hasattr(y, 'shape') and len(y.shape) > 0 and y.shape[0] > 1 else int(y)) 
+                   for (x, y) in data]
         correct = sum(int(pred == truth) for (pred, truth) in results)
         return 100.0 * correct / len(data)
 
-    def total_cost(self, data) -> float:
-        """Compute average MSE cost on dataset."""
+    def total_cost(self, data):
         cost = 0.0
         for x, y in data:
             a = self.feedforward(x)
-            cost += 0.5 * np.linalg.norm(a - y) ** 2
+            if hasattr(y, 'shape') and len(y.shape) > 0 and y.shape[0] > 1:
+                target = y
+            else:
+                target = np.zeros((10, 1))
+                target[int(y)] = 1.0
+            cost += 0.5 * np.linalg.norm(a - target) ** 2
         return cost / len(data)
 
-    # -----------------------------
-    # Save & Load
-    # -----------------------------
-
-    def save(self, path: str):
-        """Save model parameters to an .npz file."""
+    def save(self, path):
+        if not path.endswith('.npz'):
+            path += '.npz'
         np.savez(
             path,
             sizes=np.array(self.sizes, dtype=np.int64),
             weights=np.array(self.weights, dtype=object),
             biases=np.array(self.biases, dtype=object),
         )
-        print(f"Model saved to {path}.npz")
+        print(f"Model saved to {path}")
 
     @classmethod
-    def load(cls, path: str):
-        """Load model parameters from an .npz file."""
+    def load(cls, path):
+        if not path.endswith('.npz'):
+            path += '.npz'
         data = np.load(path, allow_pickle=True)
         sizes = data["sizes"]
         net = cls(sizes.tolist())

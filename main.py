@@ -270,7 +270,7 @@ def main():
     if args.train:
         training_data, test_data = load_mnist()
         nn = NeuralNetwork([784, 128, 64, 10])
-        nn.train(training_data, epochs=30, mini_batch_size=32, eta=0.25,
+        nn.train(training_data, epochs=10, mini_batch_size=32, eta=0.25,
                  test_data=test_data, track_cost=True)
         nn.save(args.model)
     else:
